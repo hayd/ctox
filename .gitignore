@@ -1,0 +1,16 @@
+temp.py
+ctox/temp
+ctox/tests/temp
+tests/temp
+
+*.pyc
+
+.tox
+.coverage
+.coverage.*
+
+htmlcov/
+
+dist/
+build/
+*.egg-info/
