@@ -26,6 +26,7 @@ def readme():
             return f.read()
 
 INSTALL_REQUIRES = (
+    ['colorama'] +
     (['argparse'] if version_info < (2, 7) else [])
 )
 
