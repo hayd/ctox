@@ -40,6 +40,23 @@ def captured_output():
         sys.stdout, sys.stderr = old_out, old_err
 
 
+def safe_shell_out(cmd, verbose=False, **kwargs):
+    try:
+        with open(os.devnull, "w") as fnull:
+            with captured_output() as (out, err):
+                check_output(cmd, stderr=fnull, **kwargs)
+        return True
+    except (CalledProcessError, OSError) as e:
+        if verbose:
+            cprint("    Error running command %s" % ' '.join(cmd),
+                   True)
+            print(e)
+        return False
+    except Exception:
+        import pdb
+        pdb.set_trace()
+
+
 def main(arguments=None, cwd=None):
     "ctox: tox with conda."
     try:  # pragma: no cover
@@ -53,11 +70,33 @@ def main(arguments=None, cwd=None):
         sys.exit(ctox(arguments, cwd))
 
     except CalledProcessError as c:
-        print(c.output())
+        print(c.output)
         return 1
 
     except KeyboardInterrupt:  # pragma: no cover
         return 1
+
+
+def install(lib, cwd, env):
+    pip = os.path.join(cwd, env, "bin", "pip")
+    success = (safe_shell_out(["conda", "install", lib, "-p", env,
+                               "--yes", "--quiet"], cwd=cwd) or
+               safe_shell_out([pip, "install",
+                               "--quiet", lib], cwd=cwd))
+
+    if success:
+        with open(os.path.join(cwd, env, "ctox"), 'a') as f:
+            f.write(" " + lib)
+    return success
+
+
+def uninstall(lib, cwd, env):
+    pip = os.path.join(cwd, env, "bin", "pip")
+    success = (safe_shell_out(["conda", "remove", lib, "-p", env,
+                               "--yes", "--quiet"]) or
+               safe_shell_out([pip, "uninstall", lib,
+                               "--quiet"]))
+    return success
 
 
 def ctox(arguments, cwd):
@@ -88,7 +127,7 @@ def ctox(arguments, cwd):
 
     failing = {}
     for env in envlist:
-        failing[env] = ctox_env(env, config, cwd, dist=dist)
+        failing[env] = ctox_env(env, config, cwd, parent=parent, dist=dist)
 
     cprint('Summary')
     print("-" * 23)
@@ -102,7 +141,7 @@ def ctox(arguments, cwd):
     return any(failing.values())
 
 
-def ctox_env(env, config, cwd, dist):
+def ctox_env(env, config, cwd, dist, parent):
     init(autoreset=True)
     if env not in SUPPORTED_ENVS:
         cprint(
@@ -113,23 +152,21 @@ def ctox_env(env, config, cwd, dist):
     cprint("%s create: %s" % (env, path))
     if not env_exists(env, cwd):
         print("creating...")
-        create_env(env, cwd)
+        create_env(env, cwd, force_remove=True)
 
     deps = get_deps(env, config)
     cprint("%s installdeps: %s" % (env, ', '.join(deps)))
-    pdeps = prev_deps(env, deps, cwd)
+    pdeps = prev_deps(env, cwd)
     if pdeps != deps:
-        print("installing...")
         uninstall_deps(env, pdeps, cwd)
         install_deps(env, deps, cwd)
 
     cprint("%s inst: %s" % (env, dist))
-    print("installing...")
     install_dist(env, cwd, dist=dist)
 
     cprint("%s runtests" % env)
     commands = get_commands(env, config)
-    return run_test(env, commands, cwd)
+    return run_test(env, commands, cwd, parent=parent)
 
 
 def read_config(cwd):
@@ -159,13 +196,14 @@ def get_deps(env, config):
             if not re.match("conda([=<>!]|$)", d)]
 
 
-def create_env(env, cwd):
+def create_env(env, cwd, force_remove=False):
     py_version = '.'.join(env[2:])
     # TODO cache cache cache!
 
-    # force clean
-    # check_output(['conda', 'remove', '-p', env, '--all', '--yes', '--quiet'],
-    #              cwd=cwd)
+    if force_remove:
+        check_output(['conda', 'remove', '-p', env, '--all',
+                      '--yes', '--quiet'],
+                     cwd=cwd)
 
     check_output(['conda', 'create', '-p', env,
                   'python=%s' % py_version, '--yes', '--quiet'],
@@ -177,10 +215,12 @@ def env_exists(env, cwd):
 
 
 def install_deps(env, deps, cwd):
+    print("installing deps...")
     try:
-        #conda = os.path.join(cwd, env, "bin", "conda")
-        check_output(['conda', 'install', '-p', env, '--yes', '--quiet'] + deps,
-                     cwd=cwd, shell=True)
+        return all(install(d, env=env, cwd=cwd) for d in deps)
+        ##conda = os.path.join(cwd, env, "bin", "conda")
+        # check_output(['conda', 'install', '-p', env, '--yes', '--quiet'] + deps,
+        #             cwd=cwd)
     except (OSError, CalledProcessError) as e:
         import pdb
         pdb.set_trace()
@@ -188,27 +228,44 @@ def install_deps(env, deps, cwd):
 
 def uninstall_deps(env, deps, cwd):
     if deps:
-        check_output(['conda', 'remove', '-p', env,
-                      '--yes', '--quiet'] + deps,
-                     cwd=cwd)
+        print("removing previous deps...")
+        success = all(uninstall(d, env=env, cwd=cwd) for d in deps)
+        if not success:
+            cprint("    Environment dependancies mismatch, rebuilding.", True)
+            create_env(env, cwd, force_remove=True)
+    c = os.path.join(cwd, env, "ctox")
+
+    with open(c, 'w') as f:
+        f.write("")
 
 
-def prev_deps(env, deps, cwd):
-    with open(os.path.join(cwd, env, "conda-meta", "history")) as history:
-        for line in (line for line in history if line.startswith("# cmd:")):
-            pass
-    try:
-        return line.split('--quiet')[-1].strip().split()
-    except NameError:  # first time or history cleared
+def prev_deps(env, cwd):
+    c = os.path.join(cwd, env, "ctox")
+    if not os.path.isfile(c):
         return []
+
+    with open(c) as f:
+        return f.read().split()
+
+    # with open(os.path.join(cwd, env, "conda-meta", "history")) as history:
+    # for line in (line for line in history if line.startswith("# cmd:")):
+    #         pass
+    # try:
+    # Note: it could be this line is complete nonsense
+    # for example if the command does not contain --quiet
+    # in which case this will be caught later
+    #     return line.split('--quiet')[-1].strip().split()
+    # except NameError:  # first time or history cleared
+    #     return []
 
 
 def install_dist(env, cwd, dist):
+    # TODO don't rebuild if not changed?
+    print("installing...")
     pip = os.path.join(cwd, env, "bin", "pip")
-    import pdb
-    if env == 'py33': pdb.set_trace()
-    check_output([pip, "install", dist, "--no-deps"],
-                 cwd=cwd)
+    local_dist = os.path.join(cwd, env, "dist")
+    safe_shell_out([pip, "install", dist, "--no-clean", "--no-deps", "-t", local_dist],
+                   cwd=cwd)
 
 
 def get_commands(env, config):
@@ -230,7 +287,7 @@ def make_dist(parent, cwd):
     return os.path.join(dist, v) + ".zip"
 
 
-def run_test(env, commands, cwd):
+def run_test(env, commands, cwd, parent):
     failing = False
     for command in commands:
         # TODO make sure in env better!!
@@ -239,7 +296,7 @@ def run_test(env, commands, cwd):
         cmd = command[0]
         command[0] = os.path.join(cwd, env, 'bin', cmd)
         try:
-            print(check_output(command, cwd=cwd))
+            print(check_output(command, cwd=parent))
         except OSError as e:
             # TODO question whether command is installed locally?
             cprint("    OSError: %s" % e.args[1], True)
