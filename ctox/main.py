@@ -186,7 +186,7 @@ def _get(config, *args):
 
 
 def get_envlist(config):
-    return _get(config, 'tox', 'envlist').split(',')
+    return re.split("\s*,\s*", _get(config, 'tox', 'envlist'))
 
 
 def get_deps(env, config):
@@ -293,7 +293,7 @@ def run_test(env, commands, cwd, parent):
         # TODO make sure in env better!!
         # prepend env to first command
         print('(%s) "%s"' % (env, ' '.join(command)))
-        cmd = command[0]
+        cmd = command[0].replace("{envpython}", "python") # TODO better
         command[0] = os.path.join(cwd, env, 'bin', cmd)
         try:
             print(check_output(command, cwd=parent))
