@@ -6,6 +6,5 @@ else:
     from unittest import main as test_main, SkipTest, TestCase
 
 
-
 if __name__ == '__main__':
     test_main()

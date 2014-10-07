@@ -1,10 +1,15 @@
 from colorama import Fore, Style, init
 from contextlib import contextmanager
+import re
 import os
 import signal
 import shutil
-from StringIO import StringIO
-from subprocess import check_output, CalledProcessError
+try:
+    from io import StringIO
+except ImportError:  # py2, pragma: no cover
+    from StringIO import StringIO
+
+from subprocess import check_output, CalledProcessError, PIPE
 import sys
 
 try:
@@ -47,6 +52,10 @@ def main(arguments=None, cwd=None):
     try:
         sys.exit(ctox(arguments, cwd))
 
+    except CalledProcessError as c:
+        print(c.output())
+        return 1
+
     except KeyboardInterrupt:  # pragma: no cover
         return 1
 
@@ -58,42 +67,65 @@ def ctox(arguments, cwd):
         cwd = os.getcwd()
     #args = parse_args(arguments)
 
-    # TODO sdist-make library into .tox ??
+    # if no conda trigger OSError
+    try:
+        with open(os.devnull, "w") as fnull:
+            check_output(['conda', '--version'], stderr=fnull)
+    except OSError:
+        cprint("conda not found, you need to install it to use ctox.\n"
+               "The recommended way is to download miniconda,\n"
+               "Do not install conda via pip.", True)
+        return 1
 
     config = read_config(cwd)
     envlist = get_envlist(config)
 
+    parent = cwd
+    cwd = os.path.join(cwd, ".tox")
+
+    cprint("GLOB sdist-make: %s" % os.path.join(parent, "setup.py"))
+    dist = make_dist(parent, cwd)  # TODO configure with option
+
     failing = {}
     for env in envlist:
-        failing[env] = ctox_env(env, config, cwd)
+        failing[env] = ctox_env(env, config, cwd, dist=dist)
 
     cprint('Summary')
     print("-" * 23)
     for env in envlist:
         f = failing[env]
         res = ('failed' if f
-                        else 'skipped' if f is ''
-                        else 'succeeded')
+               else 'skipped' if f is ''
+               else 'succeeded')
         cprint("%s commands %s" % (env, res), f)
 
     return any(failing.values())
 
 
-def ctox_env(env, config, cwd):
+def ctox_env(env, config, cwd, dist):
     init(autoreset=True)
     if env not in SUPPORTED_ENVS:
-        cprint(Style.BRIGHT + "Skipping unsupported python version %s\n" % env, '')
+        cprint(
+            Style.BRIGHT + "Skipping unsupported python version %s\n" % env, '')
         return ''
 
     path = os.path.join('.tox', env)
     cprint("%s create: %s" % (env, path))
-    create_env(env, path, cwd)
+    if not env_exists(env, cwd):
+        print("creating...")
+        create_env(env, cwd)
 
     deps = get_deps(env, config)
     cprint("%s installdeps: %s" % (env, ', '.join(deps)))
-    install_deps(env, deps, cwd)
+    pdeps = prev_deps(env, deps, cwd)
+    if pdeps != deps:
+        print("installing...")
+        uninstall_deps(env, pdeps, cwd)
+        install_deps(env, deps, cwd)
 
-    #TODO install library itself??
+    cprint("%s inst: %s" % (env, dist))
+    print("installing...")
+    install_dist(env, cwd, dist=dist)
 
     cprint("%s runtests" % env)
     commands = get_commands(env, config)
@@ -123,24 +155,60 @@ def get_envlist(config):
 def get_deps(env, config):
     deps = _get(config, 'testenv', 'deps').split()
     env_deps = _get(config, 'testenv:%s' % env, 'deps').split()
-    return deps + env_deps
+    return [d for d in ["pip"] + deps + env_deps
+            if not re.match("conda([=<>!]|$)", d)]
 
 
-def create_env(env, path, cwd):
+def create_env(env, cwd):
     py_version = '.'.join(env[2:])
     # TODO cache cache cache!
-    check_output(['conda', 'remove', '-p', path, '--all', '--yes', '--quiet'],
+
+    # force clean
+    # check_output(['conda', 'remove', '-p', env, '--all', '--yes', '--quiet'],
+    #              cwd=cwd)
+
+    check_output(['conda', 'create', '-p', env,
+                  'python=%s' % py_version, '--yes', '--quiet'],
                  cwd=cwd)
 
-    check_output(['conda', 'create', '-p', path,
-                  'python=%s' % py_version, '--quiet', '--yes'],
-                  cwd=cwd)
 
+def env_exists(env, cwd):
+    return os.path.isdir(os.path.join(cwd, env, "conda-meta"))
 
 
 def install_deps(env, deps, cwd):
-    path = os.path.join('.tox', env)
-    check_output(['conda', 'install', '-p', path, '--yes', '--quiet'] + deps)
+    try:
+        #conda = os.path.join(cwd, env, "bin", "conda")
+        check_output(['conda', 'install', '-p', env, '--yes', '--quiet'] + deps,
+                     cwd=cwd, shell=True)
+    except (OSError, CalledProcessError) as e:
+        import pdb
+        pdb.set_trace()
+
+
+def uninstall_deps(env, deps, cwd):
+    if deps:
+        check_output(['conda', 'remove', '-p', env,
+                      '--yes', '--quiet'] + deps,
+                     cwd=cwd)
+
+
+def prev_deps(env, deps, cwd):
+    with open(os.path.join(cwd, env, "conda-meta", "history")) as history:
+        for line in (line for line in history if line.startswith("# cmd:")):
+            pass
+    try:
+        return line.split('--quiet')[-1].strip().split()
+    except NameError:  # first time or history cleared
+        return []
+
+
+def install_dist(env, cwd, dist):
+    pip = os.path.join(cwd, env, "bin", "pip")
+    import pdb
+    if env == 'py33': pdb.set_trace()
+    check_output([pip, "install", dist, "--no-deps"],
+                 cwd=cwd)
 
 
 def get_commands(env, config):
@@ -150,6 +218,18 @@ def get_commands(env, config):
     return [cmd.split() for cmd in commands + env_commands if cmd]
 
 
+def make_dist(parent, cwd):
+    dist = os.path.join(cwd, "dist")
+    # suppress warnings
+    with open(os.devnull, "w") as fnull:
+        check_output(["python", "setup.py", "sdist", "--quiet",
+                      "--formats=zip", "--dist-dir", dist],
+                     stderr=fnull, cwd=parent)
+    v = '-'.join(check_output(["python", "setup.py", "--name", "--version"],
+                              cwd=parent).split())
+    return os.path.join(dist, v) + ".zip"
+
+
 def run_test(env, commands, cwd):
     failing = False
     for command in commands:
@@ -157,7 +237,7 @@ def run_test(env, commands, cwd):
         # prepend env to first command
         print('(%s) "%s"' % (env, ' '.join(command)))
         cmd = command[0]
-        command[0] = os.path.join(cwd, '.tox', env, 'bin', cmd)
+        command[0] = os.path.join(cwd, env, 'bin', cmd)
         try:
             print(check_output(command, cwd=cwd))
         except OSError as e:
@@ -168,6 +248,7 @@ def run_test(env, commands, cwd):
         except Exception as e:  # TODO should we captured_output ?
             failing = True
     return failing
+
 
 def cprint(message, status=None):
     """color printing based on status:
