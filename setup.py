@@ -27,6 +27,7 @@ def readme():
 
 INSTALL_REQUIRES = (
     ['colorama'] +
+    ['conda'] +
     (['argparse'] if version_info < (2, 7) else [])
 )
 
