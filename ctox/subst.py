@@ -103,7 +103,7 @@ def _replace_match(m, config, env):
     except TypeError:
         pass
 
-    raise NotImplementedError("{%s} not understood." % code)
+    raise NotImplementedError("{%s} not understood in tox.ini file." % code)
 
 
 def _replace_envvar(s):

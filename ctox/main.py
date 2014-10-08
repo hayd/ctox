@@ -33,6 +33,14 @@ def main(arguments=None, cwd=None):
         print(c.output)
         return 1
 
+    except NotImplementedError as e:
+        gh = "https://github.com/hayd/ctox/issues"
+        from colorama import Style
+        cprint(Style.BRIGHT + str(e), True)
+        cprint("If this is a valid tox.ini substitution, please open an issue on\n"
+               "github and request support: %s." % gh, '')
+        return 1
+
     except KeyboardInterrupt:  # pragma: no cover
         return 1
 
