@@ -28,6 +28,7 @@ def _get(config, *args, **kwargs):
 def get_whitelist(config):
     return _get(config, 'tox', 'whitelist_externals').split("\n")
 
+
 def get_envlist(config):
     from ctox.subst import parse_envlist
     return parse_envlist(_get(config, 'tox', 'envlist'))
@@ -39,10 +40,12 @@ def get_deps(env, config, sub=False):
     return [d for d in ["pip"] + deps + env_deps
             if not re.match("conda([=<>!]|$)", d)]
 
+
 def get_commands(env, config):
     from ctox.subst import replace_braces, split_on
     # TODO allow for running over new lines? Is this correct at all?
     commands = _get(config, 'testenv', 'commands').split("\n")
     env_commands = _get(config, 'testenv:%s' % env, 'commands').split("\n")
-    res= [split_on(replace_braces(cmd)) for cmd in commands + env_commands if cmd]
+    res = [split_on(replace_braces(cmd))
+           for cmd in commands + env_commands if cmd]
     return res

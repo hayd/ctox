@@ -4,6 +4,7 @@ import re
 
 REPLACEMENTS = {"envpython": "python"}
 
+
 def bash_expand(s):
     """Usually an envlist is a comma seperated list of pyXX,
     however tox supports move advanced usage, for example:
@@ -13,12 +14,12 @@ def bash_expand(s):
     ["py26-django15", "py26-django16",
      "py27-django15", "py27-django16", "py32"]
     """
-    return sum([_expand_curlys(t)
-                for t in _split_out_of_braces(s)],
-               [])
+    return sum([_expand_curlys(t) for t in _split_out_of_braces(s)], [])
+
 
 def parse_tests(env):
-	pass
+    pass
+
 
 def _replace_curly(envlist, match):
     assert isinstance(envlist, list)
@@ -26,9 +27,11 @@ def _replace_curly(envlist, match):
             for m in re.split("\s*,\s*", match.group()[1:-1])
             for e in envlist]
 
+
 def parse_envlist(s):
     # TODO some other substitution
     return bash_expand(s)
+
 
 def split_on(s, sep=" "):
     """Split s by sep, unless it's inside a quote"""
@@ -36,11 +39,13 @@ def split_on(s, sep=" "):
 
     return [_strip_speechmarks(t) for t in re.split(pattern, s)[1::2]]
 
+
 def _strip_speechmarks(t):
     for sm in ["'''", '"""', "'", '"']:
         if t.startswith(sm) and t.endswith(sm):
             return t[len(sm):-len(sm)]
     return t
+
 
 def _expand_curlys(s):
     """Takes string and returns list of options:
@@ -50,6 +55,7 @@ def _expand_curlys(s):
     """
     curleys = list(re.finditer("\{[^\{]*\}", s))
     return reduce(_replace_curly, reversed(curleys), [s])
+
 
 def _split_out_of_braces(s):
     """Generator to split comma seperated string, but not split commas inside
@@ -69,8 +75,10 @@ def _split_out_of_braces(s):
     if part:
         yield part
 
+
 def replace_braces(s):
     return re.sub("\{[^\{]*\}", _replace_match, s)
+
 
 def _replace_match(m):
     code = m.group()[1:-1].strip()
@@ -79,11 +87,14 @@ def _replace_match(m):
         return REPLACEMENTS[code]
     except KeyError:
         pass
+
     try:
         return _replace_envvar(code)
     except TypeError:
         pass
+
     raise NotImplementedError("{%s} not understood." % code)
+
 
 def _replace_envvar(s):
     """{env:KEY} {env:KEY:DEFAULTVALUE}"""

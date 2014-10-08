@@ -24,6 +24,7 @@ def uninstall(lib, cwd, env):
                                "--quiet"]))
     return success
 
+
 def create_env(env, cwd, force_remove=False):
     py_version = '.'.join(env[2:4])
     # TODO cache cache cache!
@@ -75,6 +76,7 @@ def prev_deps(env, cwd):
     with open(c) as f:
         return f.read().split()
 
+
 def install_dist(env, cwd, dist):
     # TODO don't rebuild if not changed?
     print("installing...")
@@ -95,11 +97,13 @@ def make_dist(parent, cwd):
                               cwd=parent).split())
     return os.path.join(dist, v) + ".zip"
 
+
 def run_tests(env, commands, cwd, parent, whitelist):
     # Note: it's important all these tests are run, no short-circuiting
     failing = any([run_one_test(env, c[:], cwd, parent, whitelist)
-                  for c in commands])
+                   for c in commands])
     return failing
+
 
 def run_one_test(env, command, cwd, parent, whitelist):
     # TODO make sure in env better!!

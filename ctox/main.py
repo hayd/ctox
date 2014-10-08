@@ -15,7 +15,6 @@ SUPPORTED_ENVS = ('py26', 'py27', 'py33', 'py34')
 # 4. run commands (need to flag if they are not from env?)
 
 
-
 def main(arguments=None, cwd=None):
     "ctox: tox with conda."
     try:  # pragma: no cover
@@ -110,7 +109,7 @@ def ctox_env(env, config, cwd, dist, parent):
     install_dist(env, cwd, dist=dist)
 
     cprint("%s runtests" % env)
-    #TODO move to run_tests
+    # TODO move to run_tests
     from ctox.config import get_commands, get_whitelist
     commands = get_commands(env, config)
     whitelist = get_whitelist(config)
