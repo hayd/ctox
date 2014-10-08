@@ -78,6 +78,23 @@ def safe_shell_out(cmd, verbose=False, **kwargs):
         return False
 
 
+def shell_out(cmd, stderr=STDOUT, cwd=None):
+    """Friendlier version of check_output."""
+    if cwd is None:
+        from os import getcwd
+        cwd = getcwd()  # TODO do I need to normalize this on Windows
+    out = check_output(cmd, cwd=cwd, stderr=stderr, universal_newlines=True)
+    return _clean_output(out)
+
+
+def _clean_output(out):
+    try:
+        out = out.decode('utf-8')
+    except AttributeError:  # python3, pragma: no cover
+        pass
+    return out.strip()
+
+
 def cprint(message, status=None):
     """color printing based on status:
 

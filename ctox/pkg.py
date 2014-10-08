@@ -1,6 +1,6 @@
-from ctox.shell import safe_shell_out, cprint
 import os
-from subprocess import CalledProcessError, check_output  # TODO remove
+
+from ctox.shell import safe_shell_out, CalledProcessError, shell_out, cprint
 
 
 def install(lib, cwd, env):
@@ -90,11 +90,10 @@ def install_dist(env, cwd, dist):
 def make_dist(parent, cwd):
     dist = os.path.join(cwd, "dist")
     # suppress warnings
-    with open(os.devnull, "w") as fnull:
-        check_output(["python", "setup.py", "sdist", "--quiet",
-                      "--formats=zip", "--dist-dir", dist],
-                     stderr=fnull, cwd=parent)
-    v = '-'.join(check_output(["python", "setup.py", "--name", "--version"],
+    safe_shell_out(["python", "setup.py", "sdist", "--quiet",
+                   "--formats=zip", "--dist-dir", dist],
+                   cwd=parent)
+    v = '-'.join(shell_out(["python", "setup.py", "--name", "--version"],
                               cwd=parent).split())
     return os.path.join(dist, v) + ".zip"
 
@@ -114,7 +113,7 @@ def run_one_test(env, command, cwd, parent, whitelist):
     if cmd not in whitelist:
         command[0] = os.path.join(cwd, env, 'bin', cmd)
     try:
-        print(check_output(command, cwd=parent))
+        print(shell_out(command, cwd=parent))
         return False
     except OSError as e:
         # TODO question whether command is installed locally?
