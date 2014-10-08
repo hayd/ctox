@@ -40,14 +40,14 @@ def get_deps(env, config, sub=False):
     from ctox.subst import replace_braces, expand_factor_conditions
     env_deps = (_get(config, 'testenv:%s' % env, 'deps') or
                 _get(config, 'testenv', 'deps'))
-    
+
     env_deps = [replace_braces(expand_factor_conditions(d, config, env),
                                config, env)
                 for d in env_deps.split("\n")]
-    
+
     env_deps = [d for d in sum((s.split() for s in env_deps), [])
-                  if not re.match("(pip|conda)([=<>!]|$)", d)]
-    
+                if not re.match("(pip|conda)([=<>!]|$)", d)]
+
     return ["pip"] + env_deps
 
 

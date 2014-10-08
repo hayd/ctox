@@ -53,6 +53,7 @@ def _expand_curlys(s):
     >>> _expand_curly("py{26, 27}")
     ["py26", "py27"]
     """
+    from functools import reduce
     curleys = list(re.finditer("\{[^\{]*\}", s))
     return reduce(_replace_curly, reversed(curleys), [s])
 
@@ -102,8 +103,6 @@ def _replace_match(m, config, env):
     except TypeError:
         pass
 
-    import pdb; pdb.set_trace()
-
     raise NotImplementedError("{%s} not understood." % code)
 
 
@@ -129,6 +128,7 @@ def _replace_config(s, config, env):
                          for e in expanded])
     else:
         raise TypeError()
+
 
 def expand_factor_conditions(s, config, env):
     "py{33,34}: docformatter"
