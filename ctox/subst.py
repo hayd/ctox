@@ -123,9 +123,9 @@ def _replace_config(s, config, env):
     m = re.match("\[(.*?)\](.*)", s)
     if m:
         section, option = m.groups()
-        expanded = config.get(section, option).split("\n")
-        return ' '.join([expand_factor_conditions(e, config, env)
-                         for e in expanded])
+        expanded = config.get(section, option)
+        return '\n'.join([expand_factor_conditions(e, config, env)
+                          for e in expanded.split("\n")])
     else:
         raise TypeError()
 

@@ -43,7 +43,8 @@ def get_deps(env, config, sub=False):
 
     env_deps = [replace_braces(expand_factor_conditions(d, config, env),
                                config, env)
-                for d in env_deps.split("\n")]
+                for d in env_deps.split("\n")
+                if d]
 
     env_deps = [d for d in sum((s.split() for s in env_deps), [])
                 if not re.match("(pip|conda)([=<>!]|$)", d)]
@@ -54,7 +55,9 @@ def get_deps(env, config, sub=False):
 def get_commands(env, config):
     from ctox.subst import split_on, replace_braces
     # TODO allow for running over new lines? Is this correct at all?
-    commands = _get(config, 'testenv', 'commands').split("\n")
-    env_commands = _get(config, 'testenv:%s' % env, 'commands').split("\n")
-    return [split_on(replace_braces(cmd, config, env))
-            for cmd in (commands or env_commands) if cmd]
+    global_commands = _get(config, 'testenv', 'commands')
+    env_commands = _get(config, 'testenv:%s' % env, 'commands')
+    commands = (env_commands or global_commands)
+    return [split_on(cmd)
+            for cmd in split_on(replace_braces(commands, config, env), '\n')
+            if cmd]

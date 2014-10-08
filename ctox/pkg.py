@@ -30,13 +30,13 @@ def create_env(env, cwd, force_remove=False):
     # TODO cache cache cache!
 
     if force_remove:
-        check_output(['conda', 'remove', '-p', env, '--all',
-                      '--yes', '--quiet'],
-                     cwd=cwd)
+        shell_out(['conda', 'remove', '-p', env, '--all',
+                   '--yes', '--quiet'],
+                  cwd=cwd)
 
-    check_output(['conda', 'create', '-p', env,
-                  'python=%s' % py_version, '--yes', '--quiet'],
-                 cwd=cwd)
+    shell_out(['conda', 'create', '-p', env,
+               'python=%s' % py_version, '--yes', '--quiet'],
+              cwd=cwd)
 
 
 def env_exists(env, cwd):
@@ -91,10 +91,10 @@ def make_dist(parent, cwd):
     dist = os.path.join(cwd, "dist")
     # suppress warnings
     safe_shell_out(["python", "setup.py", "sdist", "--quiet",
-                   "--formats=zip", "--dist-dir", dist],
+                    "--formats=zip", "--dist-dir", dist],
                    cwd=parent)
     v = '-'.join(shell_out(["python", "setup.py", "--name", "--version"],
-                              cwd=parent).split())
+                           cwd=parent).split())
     return os.path.join(dist, v) + ".zip"
 
 

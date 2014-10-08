@@ -48,6 +48,7 @@ except ImportError:  # pragma: no cover
                 self.cmd, self.returncode)
     subprocess.CalledProcessError = CalledProcessError
 
+
 @contextmanager
 def captured_output():
     new_out, new_err = StringIO(), StringIO()
