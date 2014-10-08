@@ -6,11 +6,9 @@ except ImportError:  # py2, pragma: no cover
     from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 
 
-def read_config(cwd):
-    tox_file = os.path.join(cwd, 'tox.ini')
-
+def read_config(toxinifile):
     config = SafeConfigParser()
-    config.read(tox_file)
+    config.read(toxinifile)
 
     return config
 
@@ -31,18 +29,23 @@ def get_whitelist(config):
     return _get(config, 'tox', 'whitelist_externals').split("\n")
 
 
+def get_changedir(config):
+    "changedir = {envdir}"
+    return config.get("changedir")
+
+
 def get_envlist(config):
     from ctox.subst import parse_envlist
     return parse_envlist(_get(config, 'tox', 'envlist'))
 
 
-def get_deps(env, config, sub=False):
+def get_deps(env, config, envbindir, sub=False):
     from ctox.subst import replace_braces, expand_factor_conditions
     env_deps = (_get(config, 'testenv:%s' % env, 'deps') or
                 _get(config, 'testenv', 'deps'))
 
     env_deps = [replace_braces(expand_factor_conditions(d, config, env),
-                               config, env)
+                               config, env, envbindir)
                 for d in env_deps.split("\n")
                 if d]
 
@@ -52,12 +55,13 @@ def get_deps(env, config, sub=False):
     return ["pip"] + env_deps
 
 
-def get_commands(env, config):
+def get_commands(env, config, envbindir):
     from ctox.subst import split_on, replace_braces
     # TODO allow for running over new lines? Is this correct at all?
     global_commands = _get(config, 'testenv', 'commands')
     env_commands = _get(config, 'testenv:%s' % env, 'commands')
     commands = (env_commands or global_commands)
     return [split_on(cmd)
-            for cmd in split_on(replace_braces(commands, config, env), '\n')
+            for cmd in split_on(replace_braces(commands, config, env, envbindir),
+                                '\n')
             if cmd]

@@ -63,6 +63,6 @@ setup(
     packages=['ctox'],
     test_suite='tests',
     zip_safe=False,
-    entry_points={'console_scripts': ['ctox = ctox.main:main',
-                                      'ctox_ = ctox.main:main']},
+    entry_points={'console_scripts': ['ctox = ctox.main:_main',
+                                      'ctox_ = ctox.main:_main']},
 )

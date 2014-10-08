@@ -2,9 +2,6 @@ import os
 import re
 
 
-REPLACEMENTS = {"envpython": "python"}
-
-
 def bash_expand(s):
     """Usually an envlist is a comma seperated list of pyXX,
     however tox supports move advanced usage, for example:
@@ -77,19 +74,23 @@ def _split_out_of_braces(s):
         yield part
 
 
-def replace_braces(s, config, env):
+def replace_braces(s, config, env, envbindir):
     def replace(m):
-        return _replace_match(m, config, env)
+        return _replace_match(m, config, env, envbindir)
     for _ in range(5):  # depth
         s = re.sub("\{[^\{]*\}", replace, s)
     return s
 
 
-def _replace_match(m, config, env):
+def _replace_match(m, config, env, envbindir):
     code = m.group()[1:-1].strip()
     try:
         # TODO could dict values be callable ?
-        return REPLACEMENTS[code]
+        f = REPLACEMENTS[code]
+        if hasattr(f, '__call__'):
+            return f(envbindir)
+        else:
+            return f
     except KeyError:
         pass
 
@@ -141,3 +142,7 @@ def expand_factor_conditions(s, config, env):
         else:
             return ''
     return s
+
+REPLACEMENTS = {"envpython": "python",
+                #"envbindir": lambda x: x.envbindir}
+                "envbindir": lambda x: x}

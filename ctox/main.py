@@ -3,7 +3,7 @@ from ctox.shell import check_output, CalledProcessError  # TODO remove?
 
 from ctox.shell import cprint
 
-__version__ = version = '0.1'
+__version__ = version = '0.1.1a'
 
 SUPPORTED_ENVS = ('py26', 'py27', 'py33', 'py34')
 
@@ -13,6 +13,95 @@ SUPPORTED_ENVS = ('py26', 'py27', 'py33', 'py34')
 # 2b. cache installation (does conda just do that?)
 # 3. install required stuff
 # 4. run commands (need to flag if they are not from env?)
+
+
+class Env(object):
+
+    def __init__(self, name, config, options, toxdir, toxinidir):
+        self.config = config
+        self.options = options
+        self.name = name
+
+        self.toxinidir = toxinidir
+        self.toxdir = toxdir
+        self.envdir = os.path.join(toxdir, self.name)
+        self.distdir = os.path.join(self.envdir, "dist")
+        self.envdistdir = os.path.join(self.envdir, "dist")
+        self.envctoxfile = os.path.join(self.envdir, "ctox")
+        self.envbindir = os.path.join(self.envdir, "bin")
+
+        self.conda = os.path.join(self.envbindir, "conda")
+        self.pip = os.path.join(self.envbindir, "pip")
+        self.python = os.path.join(self.envbindir, "python")
+        py_version = '.'.join(self.name[2:4])  # e.g. "2.7"
+
+        from ctox.config import get_commands, get_deps, get_whitelist
+        self.whitelist = get_whitelist(self.config)
+        self.deps = get_deps(
+            self.name, self.config, self.toxdir, self.envbindir)
+        self.commands = get_commands(self.name, self.config, self.envbindir)
+
+    def ctox(self):
+        """Main method for the envirnment.
+
+        Parse the tox.ini config, install the dependancies and run the
+        commands.
+
+        """
+        if self.name[:4] not in SUPPORTED_ENVS:
+            from colorama import Style
+            cprint(Style.BRIGHT +
+                   "Skipping unsupported python version %s\n" % self.name,
+                   '')
+            return ''
+
+        cprint("%s create: %s" % (self.name, self.envdir))
+        if not self.env_exists():
+            print("creating...")
+            self.create_env(force_remove=True)
+
+        cprint("%s installdeps: %s" % (self.name, ', '.join(self.deps)))
+        pdeps = self.prev_deps()
+        if pdeps != self.deps:
+            self.uninstall_deps(pdeps)
+            # TODO instead do a clean install?
+            self.install_deps()
+
+        cprint("%s inst: %s" % (self.name, self.envdistdir))
+        self.install_dist()
+
+        cprint("%s runtests" % self.name)
+        # TODO move to run_tests
+        return self.run_tests()
+
+    def prev_deps(self):
+        from ctox.pkg import prev_deps
+        return prev_deps(self)
+
+    def install_dist(self):
+        from ctox.pkg import install_dist
+        return install_dist(self)
+
+    def install_deps(self):
+        from ctox.pkg import install_deps
+        return install_deps(self)
+
+    def uninstall_deps(self, pdeps):
+        from ctox.pkg import uninstall_deps
+        return uninstall_deps(self, deps=pdeps)
+
+    def run_tests(self):
+        # TODO name change to run_commands
+        from ctox.pkg import run_tests
+        return run_tests(self)
+
+    def env_exists(self):
+        from ctox.pkg import env_exists
+        return env_exists(self)
+
+    def create_env(self, force_remove=False):
+        from ctox.pkg import create_env
+        return create_env(self, force_remove=force_remove)
 
 
 def main(arguments=None, cwd=None):
@@ -45,12 +134,29 @@ def main(arguments=None, cwd=None):
         return 1
 
 
-def ctox(arguments, cwd):
+def parse_args(arguments):
+    from argparse import ArgumentParser
+    description = ("Tox but with conda.")
+    epilog = ("")
+    parser = ArgumentParser(description=description,
+                            epilog=epilog,
+                            prog='pep8radius')
+    parser.add_argument('--version',
+                        help='print version number and exit',
+                        action='store_true')
+    return parser.parse_known_args(arguments)
+
+
+def ctox(arguments, toxinidir):
     if arguments is None:
         arguments = []
-    if cwd is None:
-        cwd = os.getcwd()
-    #args = parse_args(arguments)
+    if toxinidir is None:
+        toxinidir = os.getcwd()
+    args, options = parse_args(arguments)
+
+    if args.version:
+        print(version)
+        return 0
 
     # if no conda trigger OSError
     try:
@@ -62,67 +168,42 @@ def ctox(arguments, cwd):
                "Do not install conda via pip.", True)
         return 1
 
+    toxinifile = os.path.join(toxinidir, "tox.ini")
+
     from ctox.config import read_config, get_envlist
-    config = read_config(cwd)
+    config = read_config(toxinifile)
     envlist = get_envlist(config)
 
-    parent = cwd
-    cwd = os.path.join(cwd, ".tox")
+    # TODO configure with option
+    toxdir = os.path.join(toxinidir, ".tox")
 
     from ctox.pkg import make_dist
-    cprint("GLOB sdist-make: %s" % os.path.join(parent, "setup.py"))
-    dist = make_dist(parent, cwd)  # TODO configure with option
+    cprint("GLOB sdist-make: %s" % os.path.join(toxinidir, "setup.py"))
+    dist = make_dist(toxinidir, toxdir)
 
     failing = {}
-    for env in envlist:
-        failing[env] = ctox_env(env, config, cwd, parent=parent, dist=dist)
+    for env_name in envlist:
+        env = Env(name=env_name, config=config, options=options,
+                  toxdir=toxdir, toxinidir=toxinidir)
+        failing[env_name] = env.ctox()
 
     cprint('Summary')
     print("-" * 23)
-    for env in envlist:
-        f = failing[env]
+    for env_name in envlist:
+        f = failing[env_name]
         res = ('failed' if f
                else 'skipped' if f is ''
                else 'succeeded')
-        cprint("%s commands %s" % (env, res), f)
+        cprint("%s commands %s" % (env_name, res), f)
 
     return any(failing.values())
 
 
-def ctox_env(env, config, cwd, dist, parent):
-    from ctox.pkg import (create_env, env_exists, prev_deps, install_deps,
-                          uninstall_deps, install_dist, run_tests)
-    from ctox.config import get_deps
-    deps = get_deps(env, config)
-
-    if env[:4] not in SUPPORTED_ENVS:
-        from colorama import Style
-        cprint(Style.BRIGHT + "Skipping unsupported python version %s\n" % env,
-               '')
-        return ''
-
-    path = os.path.join('.tox', env)
-    cprint("%s create: %s" % (env, path))
-    if not env_exists(env, cwd):
-        print("creating...")
-        create_env(env, cwd, force_remove=True)
-
-    cprint("%s installdeps: %s" % (env, ', '.join(deps)))
-    pdeps = prev_deps(env, cwd)
-    if pdeps != deps:
-        uninstall_deps(env, pdeps, cwd)
-        install_deps(env, deps, cwd)
-
-    cprint("%s inst: %s" % (env, dist))
-    install_dist(env, cwd, dist=dist)
-
-    cprint("%s runtests" % env)
-    # TODO move to run_tests
-    from ctox.config import get_commands, get_whitelist
-    commands = get_commands(env, config)
-    whitelist = get_whitelist(config)
-    return run_tests(env, commands, cwd, parent=parent, whitelist=whitelist)
+def _main(cwd=None):
+    from sys import argv
+    arguments = argv[1:]
+    return main(arguments, None)
 
 
 if __name__ == '__main__':
-    main(None, None)
+    _main()
