@@ -21,7 +21,7 @@ def uninstall(lib, cwd, env):
     success = (safe_shell_out(["conda", "remove", lib, "-p", env,
                                "--yes", "--quiet"]) or
                safe_shell_out([pip, "uninstall", lib,
-                               "--quiet"]))
+                               "--yes", "--quiet"]))
     return success
 
 
@@ -58,8 +58,9 @@ def install_deps(env, deps, cwd):
 def uninstall_deps(env, deps, cwd):
     if deps:
         print("removing previous deps...")
-        success = all(uninstall(d, env=env, cwd=cwd) for d in deps)
-        if not success:
+        # Note: deps
+        success = all(uninstall(d, env=env, cwd=cwd) for d in deps[1:])
+        if (not success) or deps[0] != "pip":
             cprint("    Environment dependancies mismatch, rebuilding.", True)
             create_env(env, cwd, force_remove=True)
     c = os.path.join(cwd, env, "ctox")

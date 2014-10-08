@@ -29,7 +29,7 @@ def _replace_curly(envlist, match):
 
 
 def parse_envlist(s):
-    # TODO some other substitution
+    # TODO some other substitution?
     return bash_expand(s)
 
 
@@ -76,11 +76,15 @@ def _split_out_of_braces(s):
         yield part
 
 
-def replace_braces(s):
-    return re.sub("\{[^\{]*\}", _replace_match, s)
+def replace_braces(s, config, env):
+    def replace(m):
+        return _replace_match(m, config, env)
+    for _ in range(5):  # depth
+        s = re.sub("\{[^\{]*\}", replace, s)
+    return s
 
 
-def _replace_match(m):
+def _replace_match(m, config, env):
     code = m.group()[1:-1].strip()
     try:
         # TODO could dict values be callable ?
@@ -93,6 +97,13 @@ def _replace_match(m):
     except TypeError:
         pass
 
+    try:
+        return _replace_config(code, config, env)
+    except TypeError:
+        pass
+
+    import pdb; pdb.set_trace()
+
     raise NotImplementedError("{%s} not understood." % code)
 
 
@@ -100,9 +111,33 @@ def _replace_envvar(s):
     """{env:KEY} {env:KEY:DEFAULTVALUE}"""
     e = s.split(":")
     if len(e) > 3 or len(e) == 1 or e[0] != "env":
-        raise TypeError("Not correct env syntax.")
+        raise TypeError()
     elif len(e) == 2:
         # Note: this can/should raise a KeyError (according to spec)
         return os.environ[e[1]]
     else:  # len(e) == 3:
         return os.environ.get(e[1], e[2])
+
+
+def _replace_config(s, config, env):
+    "{[sectionname]valuename}"
+    m = re.match("\[(.*?)\](.*)", s)
+    if m:
+        section, option = m.groups()
+        expanded = config.get(section, option).split("\n")
+        return ' '.join([expand_factor_conditions(e, config, env)
+                         for e in expanded])
+    else:
+        raise TypeError()
+
+def expand_factor_conditions(s, config, env):
+    "py{33,34}: docformatter"
+    e = re.split('\s*\:\s*', s)
+    if len(e) == 2 and e[0] != "env":
+        env_labels = set(env.split('-'))
+        labels = set(bash_expand(e[0]))
+        if labels & env_labels:
+            return e[1]
+        else:
+            return ''
+    return s

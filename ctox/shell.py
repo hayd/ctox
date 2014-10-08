@@ -22,6 +22,7 @@ def captured_output():
 
 
 def safe_shell_out(cmd, verbose=False, **kwargs):
+    #print("cmd %s" % cmd)
     try:
         with open(os.devnull, "w") as fnull:
             with captured_output() as (out, err):
@@ -31,11 +32,12 @@ def safe_shell_out(cmd, verbose=False, **kwargs):
         if verbose:
             cprint("    Error running command %s" % ' '.join(cmd),
                    True)
-            print(e)
+            print(e.output)
         return False
     except Exception as e:
-        import pdb
-        pdb.set_trace()
+        # TODO no idea
+        # Can this be if you try and unistall pip? (don't do that)
+        return False
 
 
 def cprint(message, status=None):

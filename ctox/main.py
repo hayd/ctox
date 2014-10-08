@@ -84,6 +84,8 @@ def ctox(arguments, cwd):
 def ctox_env(env, config, cwd, dist, parent):
     from ctox.pkg import (create_env, env_exists, prev_deps, install_deps,
                           uninstall_deps, install_dist, run_tests)
+    from ctox.config import get_deps
+    deps = get_deps(env, config)
 
     if env[:4] not in SUPPORTED_ENVS:
         from colorama import Style
@@ -97,8 +99,6 @@ def ctox_env(env, config, cwd, dist, parent):
         print("creating...")
         create_env(env, cwd, force_remove=True)
 
-    from ctox.config import get_deps
-    deps = get_deps(env, config)
     cprint("%s installdeps: %s" % (env, ', '.join(deps)))
     pdeps = prev_deps(env, cwd)
     if pdeps != deps:

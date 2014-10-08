@@ -36,8 +36,9 @@ install:
     - python setup.py install
 
 script:
-    # TODO also run ctox on another (more complex) library?
+    - python --version
     - ctox_
+    # TODO also run ctox on another (more complex) library?
 
 # after_success:
 #     - pip install --quiet coveralls

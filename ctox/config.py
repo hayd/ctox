@@ -16,12 +16,14 @@ def read_config(cwd):
 
 
 def _get(config, *args, **kwargs):
-    sub = kwargs.pop("sub", False)
-    if sub:
+    if kwargs:
         raise TypeError("Unknown kwarg passed.")
     try:
+        # TODO this could be a while contains braces...?
+        # or that could be in replace_braces itself
         return config.get(*args)
     except (NoSectionError, NoOptionError):
+        # TODO should this raise??
         return ''
 
 
@@ -35,17 +37,24 @@ def get_envlist(config):
 
 
 def get_deps(env, config, sub=False):
-    deps = _get(config, 'testenv', 'deps').split()
-    env_deps = _get(config, 'testenv:%s' % env, 'deps').split()
-    return [d for d in ["pip"] + deps + env_deps
-            if not re.match("conda([=<>!]|$)", d)]
+    from ctox.subst import replace_braces, expand_factor_conditions
+    env_deps = (_get(config, 'testenv:%s' % env, 'deps') or
+                _get(config, 'testenv', 'deps'))
+    
+    env_deps = [replace_braces(expand_factor_conditions(d, config, env),
+                               config, env)
+                for d in env_deps.split("\n")]
+    
+    env_deps = [d for d in sum((s.split() for s in env_deps), [])
+                  if not re.match("(pip|conda)([=<>!]|$)", d)]
+    
+    return ["pip"] + env_deps
 
 
 def get_commands(env, config):
-    from ctox.subst import replace_braces, split_on
+    from ctox.subst import split_on, replace_braces
     # TODO allow for running over new lines? Is this correct at all?
     commands = _get(config, 'testenv', 'commands').split("\n")
     env_commands = _get(config, 'testenv:%s' % env, 'commands').split("\n")
-    res = [split_on(replace_braces(cmd))
-           for cmd in commands + env_commands if cmd]
-    return res
+    return [split_on(replace_braces(cmd, config, env))
+            for cmd in (commands or env_commands) if cmd]
