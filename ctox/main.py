@@ -1,5 +1,5 @@
 import os
-from subprocess import check_output, CalledProcessError  # TODO remove?
+from ctox.shell import check_output, CalledProcessError  # TODO remove?
 
 from ctox.shell import cprint
 
