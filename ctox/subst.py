@@ -103,7 +103,7 @@ def expand_factor_conditions(s, env):
     except ValueError:
         return s
 
-    if matches_factor_conditions(s, env):
+    if matches_factor_conditions(factor, env):
         return value
     else:
         return ''

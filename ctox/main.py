@@ -139,7 +139,7 @@ class Env(object):
         return install_deps(self)
 
     def uninstall_deps(self, pdeps):
-        from ctox.pkg import uninstall_deps
+        # from ctox.pkg import uninstall_deps
         # return uninstall_deps(self, deps=pdeps)
         self.create_env(force_remove=True)
 

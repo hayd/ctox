@@ -147,7 +147,8 @@ def run_one_command(env, command):
     except OSError as e:
         # Command not found locally (or not in whitelist).
         cprint("    OSError: %s" % e.args[1], 'err')
-        cprint("    Is %s in dependancies or whitelist_externals?\n" % _cmd,
+        cprint("    Is %s in dependancies or whitelist_externals?\n"
+               % abbr_cmd,
                'warn')
         return 1
     except Exception as e:

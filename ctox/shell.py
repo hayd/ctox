@@ -75,7 +75,7 @@ def safe_shell_out(cmd, verbose=False, **kwargs):
     # print("cmd %s" % cmd)
     try:
         with open(os.devnull, "w") as fnull:
-            with captured_output() as (out, err):
+            with captured_output():
                 check_output(cmd, stderr=fnull, **kwargs)
         return True
     except (CalledProcessError, OSError) as e:
