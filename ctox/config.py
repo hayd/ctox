@@ -19,9 +19,7 @@ def read_config(toxinifile):
     return config
 
 
-def _get(config, *args, **kwargs):
-    if kwargs:
-        raise TypeError("Unknown kwarg passed.")
+def _get(config, *args):
     try:
         # TODO this could be a while contains braces...?
         # or that could be in replace_braces itself
@@ -31,6 +29,11 @@ def _get(config, *args, **kwargs):
         return ''
 
 
+def _get_env_maybe(env, section, option):
+    return (_get(env.config, '%s:%s' % (section, env.name), option) or
+            _get(env.config, section, option))
+
+
 def get_whitelist(config):
     return _get(config, 'tox', 'whitelist_externals').split("\n")
 
@@ -38,9 +41,11 @@ def get_whitelist(config):
 def get_changedir(env):
     "changedir = {envdir}"
     from ctox.subst import replace_braces
-    env_changedir = (_get(env.config, 'testenv:%s' % env.name, 'changedir') or
-                     _get(env.config, 'testenv', 'changedir'))
-    return replace_braces(env_changedir, env) or env.toxinifile
+    changedir = _get_env_maybe(env, 'testenv', 'changedir')
+    if changedir:
+        return replace_braces(changedir, env)
+    else:
+        return env.toxinidir
 
 
 def get_envlist(config):
@@ -50,8 +55,7 @@ def get_envlist(config):
 
 def get_deps(env):
     from ctox.subst import replace_braces, expand_factor_conditions
-    env_deps = (_get(env.config, 'testenv:%s' % env.name, 'deps') or
-                _get(env.config, 'testenv', 'deps'))
+    env_deps = _get_env_maybe(env, "testenv", "deps")
 
     env_deps = [replace_braces(expand_factor_conditions(d, env),
                                env)

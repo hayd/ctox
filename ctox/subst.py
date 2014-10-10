@@ -98,15 +98,22 @@ def expand_factor_conditions(s, env):
     ""
 
     """
-    e = re.split(r'\s*\:\s*', s)
-    if len(e) == 2 and e[0] != "env":
-        env_labels = set(env.name.split('-'))
-        labels = set(bash_expand(e[0]))
-        if labels & env_labels:
-            return e[1]
-        else:
-            return ''
-    return s
+    try:
+        factor, value = re.split(r'\s*\:\s*', s)
+    except ValueError:
+        return s
+
+    if matches_factor_conditions(s, env):
+        return value
+    else:
+        return ''
+
+
+def matches_factor_conditions(s, env):
+    """"Returns True if py{33, 34} expanded is contained in env.name."""
+    env_labels = set(env.name.split('-'))
+    labels = set(bash_expand(s))
+    return bool(labels & env_labels)
 
 
 def positional_args(arguments):
@@ -120,6 +127,7 @@ def positional_args(arguments):
     ["arg1", "kwarg"]
 
     """
+    # TODO this behaviour probably isn't quite right.
     if arguments and arguments[0] == '--':
         for a in arguments[1:]:
             yield a
