@@ -171,6 +171,9 @@ def _replace_match(m, env):
     s = m.group()[1:-1].strip()
 
     try:
+        # get the env attributes e.g. envpython or toxinidir.
+        # Note: if you ask for a env methodname this will raise
+        # later on... so don't do that.
         return getattr(env, s)
     except AttributeError:
         pass
@@ -181,7 +184,7 @@ def _replace_match(m, env):
         except TypeError:
             pass
 
-    raise NotImplementedError("{%s} not understood in tox.ini file." % code)
+    raise NotImplementedError("{%s} not understood in tox.ini file." % s)
 
 
 def _replace_envvar(s, _):
@@ -190,14 +193,14 @@ def _replace_envvar(s, _):
     if len(e) > 3 or len(e) == 1 or e[0] != "env":
         raise TypeError()
     elif len(e) == 2:
-        # Note: this can/should raise a KeyError (according to spec)
+        # Note: this can/should raise a KeyError (according to spec).
         return os.environ[e[1]]
-    else:  # len(e) == 3:
+    else:  # len(e) == 3
         return os.environ.get(e[1], e[2])
 
 
 def _replace_config(s, env):
-    """[sectionname]valuename."""
+    """[sectionname]optionname"""
     m = re.match(r"\[(.*?)\](.*)", s)
     if m:
         section, option = m.groups()

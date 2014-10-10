@@ -70,7 +70,8 @@ def safe_shell_out(cmd, verbose=False, **kwargs):
     Suppress all output.
 
     """
-    # TODO rename this suppressed_shell_out
+    # TODO rename this suppressed_shell_out ?
+    # TODO this should probably return 1 if there's an error (i.e. vice-versa).
     # print("cmd %s" % cmd)
     try:
         with open(os.devnull, "w") as fnull:

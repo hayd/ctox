@@ -17,7 +17,7 @@ def env_exists(env):
 
 def create_env(env, force_remove=False):
     # TODO cache cache cache!
-
+    # TODO potentially we could keep a clean env around for each basepython.
     if force_remove:
         shell_out(['conda', 'remove', '-p', env.name, '--all',
                    '--yes', '--quiet'],
@@ -28,7 +28,7 @@ def create_env(env, force_remove=False):
               cwd=env.toxdir)
 
 
-def install(lib, env):
+def install(env, lib):
     lib_ = lib.replace('==', '=')  # obviously conda syntax is different
     success = (safe_shell_out(["conda", "install", lib_, "-p", env.name,
                                "--yes", "--quiet"], cwd=env.toxdir) or
@@ -43,7 +43,7 @@ def install(lib, env):
     return success
 
 
-def uninstall(lib, env):
+def uninstall(env, lib):
     lib_ = lib.replace('==', '=')  # obviously conda syntax is different
     success = (safe_shell_out(["conda", "remove", lib_, "-p", env.name,
                                "--yes", "--quiet"], cwd=env.toxdir) or
@@ -55,20 +55,18 @@ def uninstall(lib, env):
 def install_deps(env):
     print("installing deps...")
     try:
-        return all(install(d, env=env) for d in env.deps)
-        ##conda = os.path.join(cwd, env, "bin", "conda")
-        # check_output(['conda', 'install', '-p', env, '--yes', '--quiet'] + deps,
-        #             cwd=cwd)
+        # TODO can we do this in one pass?
+        return all(install(env=env, lib=d) for d in env.deps)
     except (OSError, CalledProcessError) as e:
         import pdb
         pdb.set_trace()
 
 
 def uninstall_deps(env, deps):
+    # TODO actually use this.
     if deps:
         print("removing previous deps...")
-        # Note: deps
-        success = all(uninstall(d, env=env) for d in deps[1:])
+        success = all(uninstall(env=env, lib=d) for d in deps[1:])
         if (not success) or deps[0] != "pip":
             cprint("    Environment dependancies mismatch, rebuilding.", 'err')
             create_env(env, force_remove=True)
@@ -79,6 +77,7 @@ def uninstall_deps(env, deps):
 
 def prev_deps(env):
     """Naively gets the dependancies from the last time ctox was run."""
+    # TODO something more clever.
     if not os.path.isfile(env.envctoxfile):
         return []
 
@@ -89,7 +88,7 @@ def prev_deps(env):
 def make_dist(toxinidir, toxdir, package):
     """zip up the package into the toxdir."""
     dist = os.path.join(toxdir, "dist")
-    # suppress warnings
+    # Suppress warnings.
     success = safe_shell_out(["python", "setup.py", "sdist", "--quiet",
                               "--formats=zip", "--dist-dir", dist],
                              cwd=toxinidir)
@@ -99,9 +98,9 @@ def make_dist(toxinidir, toxdir, package):
 
 def install_dist(env):
     # TODO don't rebuild if not changed?
-    # at the moment entire dir is wiped, really we want to update, which would
+    # At the moment entire dir is wiped, really we want to update, which would
     # allow us to reuse  previously built files (e.g. pyc) if unchanged...
-    # this is usually done in the setup.py into a directory...
+    # This is usually done in the setup.py into a directory...
     print("installing...")
     return safe_shell_out([env.pip, "install", env.package_zipped,
                            "--no-deps", "--upgrade",
@@ -122,40 +121,58 @@ def package_name(toxinidir):
 
 
 def run_commands(env):
-    # Note: it's important all these tests are run, no short-circuiting
+    # Note: it's important all these tests are run, no short-circuiting.
     failing = any([run_one_command(env, c[:]) for c in env.commands])
     return failing
 
 
 def run_one_command(env, command):
-    # this is a hack for prettier printing
-    cmd = _cmd = command[0]
+    # TODO move large part of this function to subst.parse_command.
+    abbr_cmd, cmd, command = _print_pretty_command(env, command)
+
+    # Skip comments.
+    line = " ".join(command).strip()
+    if not line or line.startswith("#"):
+        return 0
+
+    # Ensure the command is already in envbindir or in the whitelist, correct
+    # it if it's not in the whitelist (it'll OSError if it's not found).
+    if cmd not in env.whitelist and not cmd.startswith(env.envbindir):
+        command[0] = os.path.join(env.envbindir, cmd)
+
+    # Run the command!
+    try:
+        print(shell_out(command, cwd=env.changedir))
+        return 0
+    except OSError as e:
+        # Command not found locally (or not in whitelist).
+        cprint("    OSError: %s" % e.args[1], 'err')
+        cprint("    Is %s in dependancies or whitelist_externals?\n" % _cmd,
+               'warn')
+        return 1
+    except Exception as e:
+        # TODO should we captured_output and print some of it?
+        # TODO work out when this happens.
+        import pdb
+        pdb.set_trace()
+        return 1
+
+
+def _print_pretty_command(env, command):
+    """This is a hack for prettier printing.
+
+    Rather than {envpython} foo.py we print python foo.py.
+
+    """
+    cmd = abbr_cmd = command[0]
     if cmd.startswith(env.envbindir):
-        _cmd = os.path.relpath(cmd, env.envbindir)
-        if _cmd == ".":
-            _cmd = cmd
-    command[0] = _cmd
+        abbr_cmd = os.path.relpath(cmd, env.envbindir)
+        if abbr_cmd == ".":
+            # TODO are there more edge cases?
+            abbr_cmd = cmd
+    command[0] = abbr_cmd
     print('(%s)$ %s' % (env.name, ' '.join(['"%s"' % c if " " in c
                                             else c
                                             for c in command])))
     command[0] = cmd
-
-    # skip comments
-    line = " ".join(command).strip()
-    if not line or line.startswith("#"):
-        return False
-
-    if cmd not in env.whitelist and not cmd.startswith(env.envbindir):
-        command[0] = os.path.join(env.envbindir, cmd)
-    try:
-        print(shell_out(command, cwd=env.changedir))
-        return False
-    except OSError as e:
-        # TODO question whether command is installed locally?
-        cprint("    OSError: %s" % e.args[1], 'err')
-        cprint("    Is %s in your dependancies or whitelist?\n" % _cmd, 'warn')
-        return True
-    except Exception as e:  # TODO should we captured_output ?
-        import pdb
-        pdb.set_trace()
-        return True
+    return abbr_cmd, cmd, command

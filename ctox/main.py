@@ -13,29 +13,26 @@ __version__ = version = '0.1.1a'
 
 SUPPORTED_ENVS = ('py26', 'py27', 'py33', 'py34')
 
-# 1. read in tox.ini file
-# 2. create virtual envs (if they don't exist)
-# 2a. check they are correct version ?
-# 2b. cache installation (does conda just do that?)
-# 3. install required stuff
-# 4. run commands (need to flag if they are not from env?)
-
 
 class Env(object):
 
     """A conda environment."""
+
+    # TODO it's tempting to remove all but the tox variables as attributes
+    # i.e. call out to pkg or config functions rather than dummy methods,
+    # make the config and options private and have Env.ctox a function again.
+    # This would makes the _replace_match substitution a little cleaner.
 
     def __init__(self, name, config, options, toxdir, toxinidir, package):
         self.config = config
         self.options = options
         self.name = name
 
-        self.toxinidir = toxinidir
         self.toxdir = toxdir
+        self.toxinidir = toxinidir
         self.envdir = os.path.join(toxdir, self.name)
         self.distdir = os.path.join(self.toxdir, "dist")
         self.envdistdir = os.path.join(self.envdir, "dist")
-        self.envpackagedir = os.path.join(self.envdistdir, package)
         self.envctoxfile = os.path.join(self.envdir, "ctox")
         self.envbindir = os.path.join(self.envdir, "bin")
 
@@ -43,15 +40,22 @@ class Env(object):
         self.pip = os.path.join(self.envbindir, "pip")
         self.python = os.path.join(self.envbindir, "python")
         self.envpython = self.python
+        # TODO make this less of a hack
+        # perhaps it should also be from basepython in config
+        # should we use basepython as the variable name
         self.py_version = '.'.join(self.name[2:4])  # e.g. "2.7"
 
+        # TODO think if package is correct, atm it's name + version
+        # perhaps there is a proper tox name for this?
         self.package = package
         self.package_zipped = os.path.join(self.distdir,
                                            self.package + ".zip")
+        self.envpackagedir = os.path.join(self.envdistdir, package)
 
         from ctox.config import (
             get_commands, get_deps, get_whitelist, get_changedir)
         self.changedir = get_changedir(self)
+        # TODO remove these as attributes and call them directly
         self.whitelist = get_whitelist(self.config)
         self.deps = get_deps(self)
         self.commands = get_commands(self)
@@ -67,6 +71,8 @@ class Env(object):
         was skipped.
 
         """
+        # TODO make this less of a hack e.g. using basepython from config
+        # if it exists (and use an attribute directly).
         if self.name[:4] not in SUPPORTED_ENVS:
             from colorama import Style
             cprint(Style.BRIGHT +
@@ -77,6 +83,7 @@ class Env(object):
         # TODO don't remove env if there's a dependancy mis-match
         # rather "clean" it to the empty state (the hope being to keep
         # the dist build around - so not all files need to be rebuilt)
+        # TODO extract this as a method (for readability)
         if not self.env_exists() or self.reusableable():
             cprint("%s create: %s" % (self.name, self.envdir))
             self.create_env(force_remove=True)
@@ -84,17 +91,25 @@ class Env(object):
             cprint("%s installdeps: %s" % (self.name, ', '.join(self.deps)))
             if not self.install_deps():
                 cprint("    deps installation failed, aborted.\n", 'err')
-                return True
+                return 1
         else:
             cprint("%s cached (deps unchanged): %s" % (self.name, self.envdir))
 
+        # install the project from the zipped file
+        # TODO think more carefully about where it should be installed
+        # specifically we want to be able this to include the test files (which
+        # are not always unpacked when installed so as to run the tests there)
+        # if there are build files (e.g. cython) then tests must run where
+        # the build was. Also, reinstalling should not overwrite the builds
+        # e.g. setup.py will skip rebuilding cython files if they are unchanged
         cprint("%s inst: %s" % (self.name, self.envdistdir))
         if not self.install_dist():
             cprint("    install failed.\n", 'err')
-            return True
+            return 1
 
         cprint("%s runtests" % self.name)
-        # TODO move to run_tests
+        # return False if all commands were successfully run
+        # otherwise returns True if at least one command exited badly
         return self.run_commands()
 
     def prev_deps(self):
@@ -108,12 +123,11 @@ class Env(object):
         create a new env and re-install the deps.
 
         """
-
         # TODO better caching !!
         # This should really make use of the conda + pip tree rather than just
         # rely on a crappy DIY csv. Part of the difficulty is that pip installs
-        # go unnoticed by conda, would be great to somehow merge these with
-        # pip freeze?
+        # have to be done seperately to conda, would be great to somehow merge
+        # cleverly pip freeze? maybe needs to keep a clean env to compare with.
         return self.prev_deps() != self.deps
 
     def install_dist(self):
@@ -130,7 +144,6 @@ class Env(object):
         self.create_env(force_remove=True)
 
     def run_commands(self):
-        # TODO name change to run_commands
         from ctox.pkg import run_commands
         return run_commands(self)
 
@@ -143,7 +156,7 @@ class Env(object):
         return create_env(self, force_remove=force_remove)
 
 
-def main(arguments=None, cwd=None):
+def main(arguments, toxinidir=None):
     "ctox: tox with conda."
     try:  # pragma: no cover
         # Exit on broken pipe.
@@ -155,7 +168,7 @@ def main(arguments=None, cwd=None):
 
     try:
         import sys
-        sys.exit(ctox(arguments, cwd))
+        sys.exit(ctox(arguments, toxinidir))
 
     except CalledProcessError as c:
         print(c.output)
@@ -190,13 +203,15 @@ def ctox(arguments, toxinidir):
     """Sets up conda environments, and sets up and runs each environment based
     on the project's tox.ini configuration file.
 
-    Returns 1 if there was a problem or 0 if all commmands passed.
+    Returns 1 if either the build or running the commands failed or 0 if
+    all commmands ran successfully.
 
     """
     if arguments is None:
         arguments = []
     if toxinidir is None:
         toxinidir = os.getcwd()
+
     args, options = parse_args(arguments)
 
     if args.version:
@@ -222,20 +237,22 @@ def ctox(arguments, toxinidir):
     # TODO configure with option
     toxdir = os.path.join(toxinidir, ".tox")
 
+    # create a zip file for the project
     from ctox.pkg import make_dist, package_name
     cprint("GLOB sdist-make: %s" % os.path.join(toxinidir, "setup.py"))
     package = package_name(toxinidir)
-    dist = make_dist(toxinidir, toxdir, package)
-    if not dist:
+    if not make_dist(toxinidir, toxdir, package):
         cprint("    setup.py sdist failed", 'err')
         return 1
 
+    # setup each environment and run ctox
     failing = {}
     for env_name in envlist:
         env = Env(name=env_name, config=config, options=options,
                   toxdir=toxdir, toxinidir=toxinidir, package=package)
         failing[env_name] = env.ctox()
 
+    # print summary of the outcomes of ctox for each environment
     cprint('Summary')
     print("-" * 23)
     for env_name in envlist:
@@ -247,11 +264,14 @@ def ctox(arguments, toxinidir):
     return any(1 == v for v in failing.values())
 
 
-def _main(cwd=None):
+def _main():
     "ctox: tox with conda"
     from sys import argv
     arguments = argv[1:]
-    return main(arguments, None)
+
+    toxinidir = os.getcwd()
+
+    return main(arguments, toxinidir)
 
 
 if __name__ == '__main__':
