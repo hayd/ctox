@@ -39,7 +39,7 @@ def install(lib, env):
         with open(env.envctoxfile, 'a') as f:
             f.write(" " + lib)
     else:
-        cprint("    Unable to install %s." % lib, True)
+        cprint("    Unable to install %s." % lib, 'err')
     return success
 
 
@@ -70,7 +70,7 @@ def uninstall_deps(env, deps):
         # Note: deps
         success = all(uninstall(d, env=env) for d in deps[1:])
         if (not success) or deps[0] != "pip":
-            cprint("    Environment dependancies mismatch, rebuilding.", True)
+            cprint("    Environment dependancies mismatch, rebuilding.", 'err')
             create_env(env, force_remove=True)
 
     with open(env.envctoxfile, 'w') as f:
@@ -78,7 +78,7 @@ def uninstall_deps(env, deps):
 
 
 def prev_deps(env):
-    "Naively gets the dependancies from the last time ctox was run."
+    """Naively gets the dependancies from the last time ctox was run."""
     if not os.path.isfile(env.envctoxfile):
         return []
 
@@ -87,7 +87,7 @@ def prev_deps(env):
 
 
 def make_dist(toxinidir, toxdir, package):
-    "zip up the package into the toxdir"
+    """zip up the package into the toxdir."""
     dist = os.path.join(toxdir, "dist")
     # suppress warnings
     success = safe_shell_out(["python", "setup.py", "sdist", "--quiet",
@@ -104,8 +104,10 @@ def install_dist(env):
     # this is usually done in the setup.py into a directory...
     print("installing...")
     return safe_shell_out([env.pip, "install", env.package_zipped,
-                              "--no-deps", "--upgrade"],  # , "-t", env.envdistdir],
-                             cwd=env.toxdir)
+                           "--no-deps", "--upgrade",
+                           # "-t", env.envdistdir,
+                           ],
+                          cwd=env.toxdir)
 
     # from zipfile import ZipFile
     # with ZipFile(env.package_zipped, "r") as z:
@@ -150,8 +152,8 @@ def run_one_command(env, command):
         return False
     except OSError as e:
         # TODO question whether command is installed locally?
-        cprint("    OSError: %s" % e.args[1], True)
-        cprint("    Is %s in your dependancies?\n" % cmd, True)
+        cprint("    OSError: %s" % e.args[1], 'err')
+        cprint("    Is %s in your dependancies or whitelist?\n" % _cmd, 'warn')
         return True
     except Exception as e:  # TODO should we captured_output ?
         import pdb

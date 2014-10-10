@@ -79,8 +79,7 @@ def safe_shell_out(cmd, verbose=False, **kwargs):
         return True
     except (CalledProcessError, OSError) as e:
         if verbose:
-            cprint("    Error running command %s" % ' '.join(cmd),
-                   True)
+            cprint("    Error running command %s" % ' '.join(cmd), 'err')
             print(e.output)
         return False
     except Exception as e:
@@ -110,13 +109,13 @@ def cprint(message, status=None):
     """color printing based on status:
 
     None -> BRIGHT
-    False -> GREEN
-    True -> RED
-    '' -> YELLOW
+    'ok' -> GREEN
+    'err' -> RED
+    'warn' -> YELLOW
 
     """
     # TODO use less obscure dict, probably "error", "warn", "success" as keys
     init(autoreset=True)
-    status = {'': Fore.YELLOW, True: Fore.RED,
-              False: Fore.GREEN, None: Style.BRIGHT}[status]
+    status = {'warn': Fore.YELLOW, 'err': Fore.RED,
+              'ok': Fore.GREEN, None: Style.BRIGHT}[status]
     print(status + message)

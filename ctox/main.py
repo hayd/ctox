@@ -61,16 +61,17 @@ class Env(object):
         Parse the tox.ini config, install the dependancies and run the
         commands. The output of the commands is printed.
 
-        Returns False if they ran successfully, or True if there was an error
-        (either in setup or whilst running the commands).
+        Returns 0 if they ran successfully, 1 if there was an error
+        (either in setup or whilst running the commands), 2 if the build
+        was skipped.
 
         """
         if self.name[:4] not in SUPPORTED_ENVS:
             from colorama import Style
             cprint(Style.BRIGHT +
                    "Skipping unsupported python version %s\n" % self.name,
-                   '')
-            return ''
+                   'warn')
+            return 2
 
         # TODO don't remove env if there's a dependancy mis-match
         # rather "clean" it to the empty state (the hope being to keep
@@ -81,14 +82,14 @@ class Env(object):
 
             cprint("%s installdeps: %s" % (self.name, ', '.join(self.deps)))
             if not self.install_deps():
-                cprint("    deps installation failed, aborted.\n", True)
+                cprint("    deps installation failed, aborted.\n", 'err')
                 return True
         else:
             cprint("%s cached (deps unchanged): %s" % (self.name, self.envdir))
 
         cprint("%s inst: %s" % (self.name, self.envdistdir))
         if not self.install_dist():
-            cprint("    install failed.\n", True)
+            cprint("    install failed.\n", 'err')
             return True
 
         cprint("%s runtests" % self.name)
@@ -100,8 +101,12 @@ class Env(object):
         return prev_deps(self)
 
     def reusableable(self):
-        """Can we use the old environment. If this is True we don't need to
-        create a new env and re-install the deps."""
+        """Can we use the old environment.
+
+        If this is True we don't need to
+        create a new env and re-install the deps.
+
+        """
 
         # TODO better caching !!
         # This should really make use of the conda + pip tree rather than just
@@ -158,9 +163,9 @@ def main(arguments=None, cwd=None):
     except NotImplementedError as e:
         gh = "https://github.com/hayd/ctox/issues"
         from colorama import Style
-        cprint(Style.BRIGHT + str(e), True)
+        cprint(Style.BRIGHT + str(e), 'err')
         cprint("If this is a valid tox.ini substitution, please open an issue on\n"
-               "github and request support: %s." % gh, '')
+               "github and request support: %s." % gh, 'warn')
         return 1
 
     except KeyboardInterrupt:  # pragma: no cover
@@ -204,7 +209,7 @@ def ctox(arguments, toxinidir):
     except OSError:
         cprint("conda not found, you need to install it to use ctox.\n"
                "The recommended way is to download miniconda,\n"
-               "Do not install conda via pip.", True)
+               "Do not install conda via pip.", 'err')
         return 1
 
     toxinifile = os.path.join(toxinidir, "tox.ini")
@@ -221,7 +226,7 @@ def ctox(arguments, toxinidir):
     package = package_name(toxinidir)
     dist = make_dist(toxinidir, toxdir, package)
     if not dist:
-        cprint("    setup.py sdist failed", True)
+        cprint("    setup.py sdist failed", 'err')
         return 1
 
     failing = {}
@@ -233,11 +238,10 @@ def ctox(arguments, toxinidir):
     cprint('Summary')
     print("-" * 23)
     for env_name in envlist:
-        f = failing[env_name]
-        res = ('failed' if f
-               else 'skipped' if f is ''
-               else 'succeeded')
-        cprint("%s commands %s" % (env_name, res), f)
+        n = failing[env_name]
+        outcome = ('succeeded', 'failed', 'skipped')[n]
+        status = ('ok', 'err', 'warn')[n]
+        cprint("%s commands %s" % (env_name, outcome), status)
 
     return any(failing.values())
 

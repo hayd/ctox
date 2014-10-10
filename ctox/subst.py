@@ -15,12 +15,22 @@ REPLACEMENTS = {"envpython": "python",
                 "toxinidir": lambda x: x.toxinidir}  # I see a pattern here
 
 
-def parse_tests(env):
+def parse_commands(env):
     pass
 
 
 def parse_envlist(s):
-    # TODO some other substitution?
+    """Expand the tox.ini's envlist into a fully expanded list.
+
+    Example
+    -------
+    >>> s = "{py26,py27}-django{15,16}, py32"
+    >>> parse_envlist(s)
+    ["py26-django15", "py26-django16", "py27-django15", "py27-django16",
+    "py32"]
+
+    """
+    # TODO some other substitutions?
     return bash_expand(s)
 
 
@@ -159,11 +169,13 @@ def replace_braces(s, env):
 
 
 def _replace_match(m, env):
-    code = m.group()[1:-1].strip()
+    """Given a match object, having matched something inside curly braces,
+    replace the contents if matches one of the supported tox-substitutions."""
+    # ditch the curly braces
+    s = m.group()[1:-1].strip()
 
     try:
-        # REPLACEMENTS values are either str or func.
-        f = REPLACEMENTS[code]
+        f = REPLACEMENTS[s]
         if hasattr(f, '__call__'):
             return f(env)
         else:
@@ -173,7 +185,7 @@ def _replace_match(m, env):
 
     for r in [_replace_envvar, _replace_config, _replace_posargs]:
         try:
-            return r(code, env)
+            return r(s, env)
         except TypeError:
             pass
 
@@ -181,7 +193,7 @@ def _replace_match(m, env):
 
 
 def _replace_envvar(s, _):
-    """{env:KEY} {env:KEY:DEFAULTVALUE}"""
+    """env:KEY or env:KEY:DEFAULT"""
     e = s.split(":")
     if len(e) > 3 or len(e) == 1 or e[0] != "env":
         raise TypeError()
@@ -193,7 +205,7 @@ def _replace_envvar(s, _):
 
 
 def _replace_config(s, env):
-    """{[sectionname]valuename}"""
+    """[sectionname]valuename."""
     m = re.match(r"\[(.*?)\](.*)", s)
     if m:
         section, option = m.groups()
@@ -205,6 +217,7 @@ def _replace_config(s, env):
 
 
 def _replace_posargs(s, env):
+    "posargs:DEFAULT"
     e = re.split(r'\s*\:\s*', s)
     if e[0] == "posargs":
         return " ".join(positional_args(env.options)) or e[1]
