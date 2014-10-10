@@ -5,7 +5,6 @@ Note: Substitutions functions can be found in subst.py.
 
 """
 
-import os
 import re
 try:
     from configparser import ConfigParser as SafeConfigParser, NoSectionError, NoOptionError
@@ -41,7 +40,7 @@ def get_changedir(env):
     from ctox.subst import replace_braces
     env_changedir = (_get(env.config, 'testenv:%s' % env.name, 'changedir') or
                      _get(env.config, 'testenv', 'changedir'))
-    return replace_braces(env_changedir, env)
+    return replace_braces(env_changedir, env) or env.toxinifile
 
 
 def get_envlist(config):
@@ -49,7 +48,7 @@ def get_envlist(config):
     return parse_envlist(_get(config, 'tox', 'envlist'))
 
 
-def get_deps(env, sub=False):
+def get_deps(env):
     from ctox.subst import replace_braces, expand_factor_conditions
     env_deps = (_get(env.config, 'testenv:%s' % env.name, 'deps') or
                 _get(env.config, 'testenv', 'deps'))

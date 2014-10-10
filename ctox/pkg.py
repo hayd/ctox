@@ -104,8 +104,8 @@ def install_dist(env):
     # this is usually done in the setup.py into a directory...
     print("installing...")
     return safe_shell_out([env.pip, "install", env.package_zipped,
-                           "--no-deps"],  # , "-t", env.envdistdir],
-                          cwd=env.toxdir)
+                              "--no-deps", "--upgrade"],  # , "-t", env.envdistdir],
+                             cwd=env.toxdir)
 
     # from zipfile import ZipFile
     # with ZipFile(env.package_zipped, "r") as z:

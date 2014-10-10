@@ -34,14 +34,14 @@ def expand_curlys(s):
 
     """
     from functools import reduce
-    curleys = list(re.finditer("\{[^\{\}]*\}", s))
+    curleys = list(re.finditer(r"{[^{}]*}", s))
     return reduce(_replace_curly, reversed(curleys), [s])
 
 
 def _replace_curly(envlist, match):
     assert isinstance(envlist, list)
     return [e[:match.start()] + m + e[match.end():]
-            for m in re.split("\s*,\s*", match.group()[1:-1])
+            for m in re.split(r"\s*,\s*", match.group()[1:-1])
             for e in envlist]
 
 
@@ -69,7 +69,7 @@ def _split_out_of_braces(s):
 
     """
     prev = 0
-    for m in re.finditer("\{[^\{\}]*\}|\s*,\s*", s):
+    for m in re.finditer(r"{[^{}]*}|\s*,\s*", s):
         if not m.group().startswith("{"):
             part = s[prev:m.start()]
             if part:
@@ -92,7 +92,7 @@ def expand_factor_conditions(s, env):
     ""
 
     """
-    e = re.split('\s*\:\s*', s)
+    e = re.split(r'\s*\:\s*', s)
     if len(e) == 2 and e[0] != "env":
         env_labels = set(env.name.split('-'))
         labels = set(bash_expand(e[0]))
@@ -154,7 +154,7 @@ def replace_braces(s, env):
     def replace(m):
         return _replace_match(m, env)
     for _ in range(DEPTH):
-        s = re.sub("\{[^\{\}]*\}", replace, s)
+        s = re.sub(r"{[^{}]*}", replace, s)
     return s
 
 
@@ -194,7 +194,7 @@ def _replace_envvar(s, _):
 
 def _replace_config(s, env):
     """{[sectionname]valuename}"""
-    m = re.match("\[(.*?)\](.*)", s)
+    m = re.match(r"\[(.*?)\](.*)", s)
     if m:
         section, option = m.groups()
         expanded = env.config.get(section, option)
@@ -205,7 +205,7 @@ def _replace_config(s, env):
 
 
 def _replace_posargs(s, env):
-    e = re.split('\s*\:\s*', s)
+    e = re.split(r'\s*\:\s*', s)
     if e[0] == "posargs":
         return " ".join(positional_args(env.options)) or e[1]
     else:
