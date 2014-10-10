@@ -243,7 +243,7 @@ def ctox(arguments, toxinidir):
         status = ('ok', 'err', 'warn')[n]
         cprint("%s commands %s" % (env_name, outcome), status)
 
-    return any(failing.values())
+    return any(1 == v for v in failing.values())
 
 
 def _main(cwd=None):
