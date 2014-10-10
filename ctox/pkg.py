@@ -146,7 +146,7 @@ def run_one_command(env, command):
     if cmd not in env.whitelist and not cmd.startswith(env.envbindir):
         command[0] = os.path.join(env.envbindir, cmd)
     try:
-        print(shell_out(command, cwd=env.toxinidir))
+        print(shell_out(command, cwd=env.changedir))
         return False
     except OSError as e:
         # TODO question whether command is installed locally?

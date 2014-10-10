@@ -36,9 +36,12 @@ def get_whitelist(config):
     return _get(config, 'tox', 'whitelist_externals').split("\n")
 
 
-def get_changedir(config):
+def get_changedir(env):
     "changedir = {envdir}"
-    return config.get("changedir")
+    from ctox.subst import replace_braces
+    env_changedir = (_get(env.config, 'testenv:%s' % env.name, 'changedir') or
+                     _get(env.config, 'testenv', 'changedir'))
+    return replace_braces(env_changedir, env)
 
 
 def get_envlist(config):

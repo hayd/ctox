@@ -10,7 +10,9 @@ import re
 
 DEPTH = 5
 REPLACEMENTS = {"envpython": "python",
-                "envbindir": lambda x: x.envbindir}
+                "envbindir": lambda x: x.envbindir,
+                "envdir": lambda x: x.envdir,
+                "toxinidir": lambda x: x.toxinidir}  # I see a pattern here
 
 
 def parse_tests(env):
@@ -108,12 +110,18 @@ def positional_args(arguments):
     -------
     >>> list(positional_args(["arg1", "arg2", "--kwarg"]))
     ["arg1", "arg2"]
+    >>> list(positional_args(["--", "arg1", "--kwarg"]))
+    ["arg1", "kwarg"]
 
     """
-    for a in arguments:
-        if a.startswith('-'):
-            break
-        yield a
+    if arguments and arguments[0] == '--':
+        for a in arguments[1:]:
+            yield a
+    else:
+        for a in arguments:
+            if a.startswith('-'):
+                break
+            yield a
 
 
 def split_on(s, sep=" "):

@@ -48,7 +48,9 @@ class Env(object):
         self.package_zipped = os.path.join(self.distdir,
                                            self.package + ".zip")
 
-        from ctox.config import get_commands, get_deps, get_whitelist
+        from ctox.config import (
+            get_commands, get_deps, get_whitelist, get_changedir)
+        self.changedir = get_changedir(self)
         self.whitelist = get_whitelist(self.config)
         self.deps = get_deps(self)
         self.commands = get_commands(self)
