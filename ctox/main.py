@@ -42,6 +42,7 @@ class Env(object):
         self.conda = os.path.join(self.envbindir, "conda")
         self.pip = os.path.join(self.envbindir, "pip")
         self.python = os.path.join(self.envbindir, "python")
+        self.envpython = self.python
         self.py_version = '.'.join(self.name[2:4])  # e.g. "2.7"
 
         self.package = package

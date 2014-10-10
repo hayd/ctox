@@ -9,10 +9,6 @@ import re
 
 
 DEPTH = 5
-REPLACEMENTS = {"envpython": "python",
-                "envbindir": lambda x: x.envbindir,
-                "envdir": lambda x: x.envdir,
-                "toxinidir": lambda x: x.toxinidir}  # I see a pattern here
 
 
 def parse_commands(env):
@@ -175,12 +171,8 @@ def _replace_match(m, env):
     s = m.group()[1:-1].strip()
 
     try:
-        f = REPLACEMENTS[s]
-        if hasattr(f, '__call__'):
-            return f(env)
-        else:
-            return f
-    except KeyError:
+        return getattr(env, s)
+    except AttributeError:
         pass
 
     for r in [_replace_envvar, _replace_config, _replace_posargs]:
