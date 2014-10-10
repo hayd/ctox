@@ -1,3 +1,6 @@
+"""This module contains light-weight wrappers to subprocess's check_output
+and colored printing."""
+
 from colorama import Fore, Style, init
 from contextlib import contextmanager
 import os
@@ -9,6 +12,7 @@ except ImportError:  # py2, pragma: no cover
     from StringIO import StringIO
 
 
+# https://github.com/hayd/pep8radius/blob/master/pep8radius/shell.py
 try:
     from subprocess import STDOUT, check_output, CalledProcessError
 except ImportError:  # pragma: no cover
@@ -61,7 +65,13 @@ def captured_output():
 
 
 def safe_shell_out(cmd, verbose=False, **kwargs):
-    #print("cmd %s" % cmd)
+    """run cmd and return True if it went ok, False if something went wrong.
+
+    Suppress all output.
+
+    """
+    # TODO rename this suppressed_shell_out
+    # print("cmd %s" % cmd)
     try:
         with open(os.devnull, "w") as fnull:
             with captured_output() as (out, err):
@@ -105,6 +115,7 @@ def cprint(message, status=None):
     '' -> YELLOW
 
     """
+    # TODO use less obscure dict, probably "error", "warn", "success" as keys
     init(autoreset=True)
     status = {'': Fore.YELLOW, True: Fore.RED,
               False: Fore.GREEN, None: Style.BRIGHT}[status]

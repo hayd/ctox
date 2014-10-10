@@ -1,3 +1,10 @@
+"""This module contains the config functions for reading and parsing the
+tox.ini file.
+
+Note: Substitutions functions can be found in subst.py.
+
+"""
+
 import os
 import re
 try:
@@ -39,13 +46,13 @@ def get_envlist(config):
     return parse_envlist(_get(config, 'tox', 'envlist'))
 
 
-def get_deps(env, config, envbindir, sub=False):
+def get_deps(env, sub=False):
     from ctox.subst import replace_braces, expand_factor_conditions
-    env_deps = (_get(config, 'testenv:%s' % env, 'deps') or
-                _get(config, 'testenv', 'deps'))
+    env_deps = (_get(env.config, 'testenv:%s' % env.name, 'deps') or
+                _get(env.config, 'testenv', 'deps'))
 
-    env_deps = [replace_braces(expand_factor_conditions(d, config, env),
-                               config, env, envbindir)
+    env_deps = [replace_braces(expand_factor_conditions(d, env),
+                               env)
                 for d in env_deps.split("\n")
                 if d]
 
@@ -55,13 +62,12 @@ def get_deps(env, config, envbindir, sub=False):
     return ["pip"] + env_deps
 
 
-def get_commands(env, config, envbindir):
+def get_commands(env):
     from ctox.subst import split_on, replace_braces
     # TODO allow for running over new lines? Is this correct at all?
-    global_commands = _get(config, 'testenv', 'commands')
-    env_commands = _get(config, 'testenv:%s' % env, 'commands')
+    global_commands = _get(env.config, 'testenv', 'commands')
+    env_commands = _get(env.config, 'testenv:%s' % env.name, 'commands')
     commands = (env_commands or global_commands)
     return [split_on(cmd)
-            for cmd in split_on(replace_braces(commands, config, env, envbindir),
-                                '\n')
+            for cmd in split_on(replace_braces(commands, env), '\n')
             if cmd]
