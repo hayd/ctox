@@ -8,6 +8,7 @@ to be a ctox.main.Env instance.
 
 import os
 
+from subprocess import Popen, STDOUT
 from ctox.shell import safe_shell_out, CalledProcessError, shell_out, cprint
 
 
@@ -142,7 +143,7 @@ def run_one_command(env, command):
 
     # Run the command!
     try:
-        print(shell_out(command, cwd=env.changedir))
+        Popen(command, cwd=env.changedir, stderr=STDOUT).communicate()
         return 0
     except OSError as e:
         # Command not found locally (or not in whitelist).

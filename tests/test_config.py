@@ -12,9 +12,10 @@ class TestConfig(TestCase):
         self.assertEqual(res, ["echo"])
 
     def test_get_changedir(self):
-        env = DummyEnv(name="py26", config=self.config, envdir="foo")
+        # Note: IMO py34 should work here too
+        env = DummyEnv(name="foo", config=self.config, envdir="bar")
         res = get_changedir(env)
-        self.assertEqual(res, "foo")
+        self.assertEqual(res, "bar")
 
     def test_get_envlist(self):
         res = get_envlist(self.config)
