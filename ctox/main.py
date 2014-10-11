@@ -192,7 +192,7 @@ def parse_args(arguments):
     epilog = ("")
     parser = ArgumentParser(description=description,
                             epilog=epilog,
-                            prog='pep8radius')
+                            prog='ctox')
     parser.add_argument('--version',
                         help='print version number and exit',
                         action='store_true')
