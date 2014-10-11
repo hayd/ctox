@@ -23,7 +23,7 @@ def _get(config, *args):
     try:
         # TODO this could be a while contains braces...?
         # or that could be in replace_braces itself
-        return config.get(*args)
+        return config.get(*args).strip()
     except (NoSectionError, NoOptionError):
         # TODO should this raise??
         return ''

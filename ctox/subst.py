@@ -35,7 +35,7 @@ def expand_curlys(s):
 
     Example
     -------
-    >>> expand_curly("py{26, 27}")
+    >>> expand_curlys("py{26, 27}")
     ["py26", "py27"]
 
     """
@@ -114,28 +114,6 @@ def matches_factor_conditions(s, env):
     env_labels = set(env.name.split('-'))
     labels = set(bash_expand(s))
     return bool(labels & env_labels)
-
-
-def positional_args(arguments):
-    """"Generator for position arguments.
-
-    Example
-    -------
-    >>> list(positional_args(["arg1", "arg2", "--kwarg"]))
-    ["arg1", "arg2"]
-    >>> list(positional_args(["--", "arg1", "--kwarg"]))
-    ["arg1", "kwarg"]
-
-    """
-    # TODO this behaviour probably isn't quite right.
-    if arguments and arguments[0] == '--':
-        for a in arguments[1:]:
-            yield a
-    else:
-        for a in arguments:
-            if a.startswith('-'):
-                break
-            yield a
 
 
 def split_on(s, sep=" "):
@@ -223,6 +201,7 @@ def _replace_posargs(s, env):
     "posargs:DEFAULT"
     e = re.split(r'\s*\:\s*', s)
     if e[0] == "posargs":
+        from ctox.main import positional_args
         return " ".join(positional_args(env.options)) or e[1]
     else:
         raise TypeError()

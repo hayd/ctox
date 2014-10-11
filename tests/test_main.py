@@ -1,17 +1,36 @@
-import sys
+from tests.util import *
 
-if sys.version_info < (2, 7):
-    from unittest2 import main as test_main, SkipTest, TestCase
-else:
-    from unittest import main as test_main, SkipTest, TestCase
-
-# Tests
-# if env has changed since previous (e.g. conda install something,
-# e.g. conda install ipython -p .tox/py26, get dep mismatch)
+from ctox.main import *
 
 
-def test_test():
-    pass
+# TODO not sure what we can unit test in main...
+# For the moment we rely on integration testing.
+
+
+class TestMain(TestCase):
+
+    def test_positional_args(self):
+        arguments = ['arg1', 'arg2', '--kwarg']
+        res = list(positional_args(arguments))
+        exp = ['arg1', 'arg2']
+        self.assertEqual(res, exp)
+
+    def test_positional_args_with_kwarg(self):
+        arguments = ['--', 'arg1', '--kwarg']
+        res = list(positional_args(arguments))
+        exp = ['arg1', '--kwarg']
+        self.assertEqual(res, exp)
+
+    def test_parse_args_none(self):
+        _, res = parse_args([])
+        exp = []
+        self.assertEqual(res, exp)
+
+    def test_parse_args_some(self):
+        _, res = parse_args(['arg', '--kwarg'])
+        exp = ['arg', '--kwarg']
+        self.assertEqual(res, exp)
+
 
 if __name__ == '__main__':
     test_main()

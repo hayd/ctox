@@ -7,9 +7,11 @@ import os
 import sys
 
 try:
-    from io import StringIO
-except ImportError:  # py2, pragma: no cover
     from StringIO import StringIO
+except ImportError:  # py3, pragma: no cover
+    # Note: although this would import in py2, io.StringIO is fussy about bytes
+    # vs unicode, and this leads to pain.
+    from io import StringIO
 
 
 # https://github.com/hayd/pep8radius/blob/master/pep8radius/shell.py

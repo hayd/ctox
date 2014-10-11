@@ -128,7 +128,7 @@ def run_commands(env):
 
 def run_one_command(env, command):
     # TODO move large part of this function to subst.parse_command.
-    abbr_cmd, cmd, command = _print_pretty_command(env, command)
+    abbr_cmd, cmd, command = print_pretty_command(env, command)
 
     # Skip comments.
     line = " ".join(command).strip()
@@ -159,10 +159,10 @@ def run_one_command(env, command):
         return 1
 
 
-def _print_pretty_command(env, command):
+def print_pretty_command(env, command):
     """This is a hack for prettier printing.
 
-    Rather than {envpython} foo.py we print python foo.py.
+    Rather than "{envpython} foo.py" we print "python foo.py".
 
     """
     cmd = abbr_cmd = command[0]
