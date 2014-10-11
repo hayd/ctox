@@ -143,20 +143,15 @@ def run_one_command(env, command):
 
     # Run the command!
     try:
-        Popen(command, cwd=env.changedir, stderr=STDOUT).communicate()
-        return 0
+        p = Popen(command, cwd=env.changedir, stderr=STDOUT)
+        p.communicate()
+        return p.returncode
     except OSError as e:
         # Command not found locally (or not in whitelist).
         cprint("    OSError: %s" % e.args[1], 'err')
         cprint("    Is %s in dependancies or whitelist_externals?\n"
                % abbr_cmd,
                'warn')
-        return 1
-    except Exception as e:
-        # TODO should we captured_output and print some of it?
-        # TODO work out when this happens.
-        import pdb
-        pdb.set_trace()
         return 1
 
 

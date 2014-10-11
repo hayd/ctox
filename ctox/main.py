@@ -9,7 +9,7 @@ from ctox.shell import check_output, CalledProcessError  # TODO remove?
 
 from ctox.shell import cprint
 
-__version__ = version = '0.1.1'
+__version__ = version = '0.1.2'
 
 SUPPORTED_ENVS = ('py26', 'py27', 'py33', 'py34')
 

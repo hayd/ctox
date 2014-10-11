@@ -18,5 +18,6 @@ class TestPkg(TestCase):
         exp = "(foo)$ bar\n"
         self.assertEqual(out.getvalue(), exp)
 
+        
 if __name__ == '__main__':
     test_main()
