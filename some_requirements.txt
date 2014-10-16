@@ -1,0 +1,4 @@
+nose
+colorama
+conda
+docformatter

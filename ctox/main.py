@@ -192,10 +192,14 @@ def parse_args(arguments):
     epilog = ("")
     parser = ArgumentParser(description=description,
                             epilog=epilog,
-                            prog='pep8radius')
+                            prog='ctox')
     parser.add_argument('--version',
                         help='print version number and exit',
                         action='store_true')
+    parser.add_argument('-e',
+                        help='choose environments to run, comma seperated',
+                        default='ALL')
+
     return parser.parse_known_args(arguments)
 
 
@@ -232,7 +236,10 @@ def ctox(arguments, toxinidir):
 
     from ctox.config import read_config, get_envlist
     config = read_config(toxinifile)
-    envlist = get_envlist(config)
+    if args.e == 'ALL':
+        envlist = get_envlist(config)
+    else:
+        envlist = args.e.split(',')
 
     # TODO configure with option
     toxdir = os.path.join(toxinidir, ".tox")

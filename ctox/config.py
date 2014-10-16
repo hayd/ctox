@@ -55,7 +55,12 @@ def get_envlist(config):
 
 def get_deps(env):
     from ctox.subst import replace_braces, expand_factor_conditions
-    env_deps = _get_env_maybe(env, "testenv", "deps")
+    env_deps = _get_env_maybe(env, "testenv", "deps").strip()
+
+    if env_deps.startswith('-r'):
+        requirements_txt = replace_braces(env_deps[2:].strip(), env)
+        with open(requirements_txt) as f:
+            env_deps = f.read().strip()
 
     env_deps = [replace_braces(expand_factor_conditions(d, env),
                                env)
