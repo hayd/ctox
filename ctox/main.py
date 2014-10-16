@@ -236,7 +236,7 @@ def ctox(arguments, toxinidir):
 
     from ctox.config import read_config, get_envlist
     config = read_config(toxinifile)
-    if args.e =='ALL':
+    if args.e == 'ALL':
         envlist = get_envlist(config)
     else:
         envlist = args.e.split(',')

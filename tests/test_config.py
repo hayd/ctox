@@ -28,7 +28,6 @@ class TestConfig(TestCase):
         exp = ['pip', 'argparse', 'unittest2', 'nose', 'colorama', 'pyfaker']
         self.assertEqual(res, exp)
 
-
     # TODO def test_get_commands (too unstable atm)
 
 

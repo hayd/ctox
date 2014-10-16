@@ -62,8 +62,6 @@ def get_deps(env):
         with open(requirements_txt) as f:
             env_deps = f.read().strip()
 
-    print(repr(env_deps))
-
     env_deps = [replace_braces(expand_factor_conditions(d, env),
                                env)
                 for d in env_deps.split("\n")
