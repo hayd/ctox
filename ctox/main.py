@@ -11,7 +11,7 @@ from ctox.shell import cprint
 
 __version__ = version = '0.1.2'
 
-SUPPORTED_ENVS = ('py26', 'py27', 'py33', 'py34')
+SUPPORTED_ENVS = ('py26', 'py27', 'py33', 'py34', 'py35')
 
 
 class Env(object):
