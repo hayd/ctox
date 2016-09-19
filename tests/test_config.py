@@ -19,7 +19,7 @@ class TestConfig(TestCase):
 
     def test_get_envlist(self):
         res = get_envlist(self.config)
-        exp = ['py26', 'py27', 'py33-unify', 'py34-unify', 'foo']
+        exp = ['py26', 'py27', 'py33-unify', 'py34-unify', 'py35-unify', 'foo']
         self.assertEqual(res, exp)
 
     def test_get_deps(self):
