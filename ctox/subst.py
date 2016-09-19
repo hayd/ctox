@@ -167,7 +167,7 @@ def _replace_match(m, env):
     for r in [_replace_envvar, _replace_config, _replace_posargs]:
         try:
             return r(s, env)
-        except TypeError:
+        except ValueError:
             pass
 
     raise NotImplementedError("{%s} not understood in tox.ini file." % s)
@@ -177,7 +177,7 @@ def _replace_envvar(s, _):
     """env:KEY or env:KEY:DEFAULT"""
     e = s.split(":")
     if len(e) > 3 or len(e) == 1 or e[0] != "env":
-        raise TypeError()
+        raise ValueError()
     elif len(e) == 2:
         # Note: this can/should raise a KeyError (according to spec).
         return os.environ[e[1]]
@@ -194,7 +194,7 @@ def _replace_config(s, env):
         return '\n'.join([expand_factor_conditions(e, env)
                           for e in expanded.split("\n")])
     else:
-        raise TypeError()
+        raise ValueError()
 
 
 def _replace_posargs(s, env):
@@ -205,4 +205,4 @@ def _replace_posargs(s, env):
         return (" ".join(positional_args(env.options)) or
                 (e[1] if len(e) > 1 else ""))
     else:
-        raise TypeError()
+        raise ValueError()
