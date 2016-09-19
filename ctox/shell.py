@@ -118,7 +118,6 @@ def cprint(message, status=None):
 
     """
     # TODO use less obscure dict, probably "error", "warn", "success" as keys
-    init(autoreset=True)
     status = {'warn': Fore.YELLOW, 'err': Fore.RED,
               'ok': Fore.GREEN, None: Style.BRIGHT}[status]
-    print(status + message)
+    print(status + message + Style.RESET_ALL)
